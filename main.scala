@@ -46,6 +46,10 @@ def tree(
             case None =>
               println("No more elements")
               (Node("", None, None), Nil)
+          end match
+      end match
+  end match
+end tree
 
 def printTree(node: Node): Unit =
   println(s"value: ${node.value}")
@@ -55,6 +59,7 @@ def printTree(node: Node): Unit =
       printTree(left)
     case None =>
       println("left: None")
+  end match
 
   node.right match
     case Some(right) =>
@@ -62,6 +67,8 @@ def printTree(node: Node): Unit =
       printTree(right)
     case None =>
       println("right: None")
+  end match
+end printTree
 
 // (
 //   Node(
