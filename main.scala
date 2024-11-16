@@ -33,8 +33,6 @@ def tree(
 ): Tuple3[Node, List[String], List[Reference]] =
   op match
     case Some(op) =>
-      println(s"Operator is: $op")
-
       val leftTree = Node(op)
       val (rightTree, usedStrings, incomingRefs) = tree(tokens)
 
@@ -46,21 +44,16 @@ def tree(
     case None =>
       tokens match
         case head :: tail if Set("+", "-", "*", "/").contains(head) =>
-          println(s"Found operator: $head")
           val (leftTree, leftUsedTokens, leftRefs) = tree(tail, Some(head))
-
-          println(leftUsedTokens)
 
           val unusedRemainingTokens =
             leftUsedTokens.foldLeft(tokens)((acc, element) =>
               if acc.head == element then acc.tail else acc
             )
 
-          println(unusedRemainingTokens)
           val (rightTree, rightUsedTokens, rightRefs) = tree(
             unusedRemainingTokens
           )
-          println(rightUsedTokens)
 
           (
             Node("@", Some(leftTree), Some(rightTree)),
@@ -70,8 +63,6 @@ def tree(
 
         case _ =>
           val head = tokens.head
-          println(s"Found leaf: $head")
-
           val ref = Reference(head, None)
 
           (
