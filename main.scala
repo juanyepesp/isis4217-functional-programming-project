@@ -3,8 +3,8 @@ class Reference(val varName: String, var value: Option[Int]):
 
 case class Node(
     value: String,
-    left: Option[Node],
-    right: Option[Node],
+    left: Option[Node] = None,
+    right: Option[Node] = None,
     ref: Option[Reference] = None
 )
 
@@ -25,60 +25,60 @@ case class Node(
 
   print(node)
 
+  // printTree(node)
+
 def tree(
-    list: List[String],
-    op: Option[String] = None,
-    refs: List[Reference] = Nil
+    tokens: List[String],
+    op: Option[String] = None
 ): Tuple3[Node, List[String], List[Reference]] =
   op match
     case Some(op) =>
       println(s"Operator is: $op")
-      val (rightTree, usedStrings, actualRefs) = tree(list)
+
+      val leftTree = Node(op)
+      val (rightTree, usedStrings, incomingRefs) = tree(tokens)
 
       (
-        Node("@", Some(Node(op, None, None)), Some(rightTree)),
+        Node("@", Some(leftTree), Some(rightTree)),
         op :: usedStrings,
-        refs ::: actualRefs
+        incomingRefs
       )
     case None =>
-      list match
+      tokens match
         case head :: tail if Set("+", "-", "*", "/").contains(head) =>
           println(s"Found operator: $head")
-          val (leftTree, leftUsedStrings, leftRefs) = tree(tail, Some(head))
+          val (leftTree, leftUsedTokens, leftRefs) = tree(tail, Some(head))
 
-          println(leftUsedStrings)
+          println(leftUsedTokens)
 
-          // val listWithoutUsed = list.dropWhile(leftUsedStrings.contains)
-          val listWithoutUsed = leftUsedStrings.foldLeft(list)((acc, element) =>
-            if acc.head == element then acc.tail else acc
+          val unusedRemainingTokens =
+            leftUsedTokens.foldLeft(tokens)((acc, element) =>
+              if acc.head == element then acc.tail else acc
+            )
+
+          println(unusedRemainingTokens)
+          val (rightTree, rightUsedTokens, rightRefs) = tree(
+            unusedRemainingTokens
           )
-
-          println(listWithoutUsed)
-          val (rightTree, rightUsedStrings, rightRefs) = tree(listWithoutUsed)
-          println(rightUsedStrings)
+          println(rightUsedTokens)
 
           (
             Node("@", Some(leftTree), Some(rightTree)),
-            leftUsedStrings ::: rightUsedStrings,
+            leftUsedTokens ::: rightUsedTokens,
             leftRefs ::: rightRefs
           )
 
         case _ =>
-          list.headOption match
-            case Some(head) =>
-              println(s"Found leaf: $head")
+          val head = tokens.head
+          println(s"Found leaf: $head")
 
-              val ref = Reference(head, None)
+          val ref = Reference(head, None)
 
-              (
-                Node(head, None, None, Some(ref)),
-                head :: Nil,
-                ref :: refs
-              )
-            case None =>
-              println("No more elements")
-              (Node("", None, None), Nil, Nil)
-          end match
+          (
+            Node(head, None, None, Some(ref)),
+            head :: Nil,
+            ref :: Nil
+          )
       end match
   end match
 end tree

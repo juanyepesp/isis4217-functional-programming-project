@@ -66,31 +66,25 @@ declare
     end
 
 
-    fun {Tree List Op Refs} % tri tuple (Node, List[Strings], List[Reference])
+    fun {Tree Tokens Op}
         {Show 'Recurring'}
-        {Show record(node: List op: Op refs: Refs)}
         case Op of nil then
-            {Show 'Operator is nil'}
-            % {Show List}
-            % {System.showInfo List}
-            case List of H|T then
-                {Show 'entro a la list'}
-                {Show {Member H ["+" "-" "*" "/"]}}
-                {Show H}
-                {System.showInfo H}
+            case Tokens of H|T then
                 if {Member H ["+" "-" "*" "/"]} then
-                    local ListWithoutUsed LeftRecord LeftTree LeftUsedStrings LeftRefs RightRecord RightTree RightUsedStrings RightRefs ThisNode AppendedUsedStringsList AppendedRefsList in
-                        LeftRecord = {Tree T H nil}
-                        {Show 'line 84 after call'}
+                    local UnusedRemainingTokens LeftRecord LeftTree LeftUsedTokens LeftRefs RightRecord RightTree RightUsedTokens RightRefs CurrentNode AppendedUsedStringsList AppendedRefsList in
+                        LeftRecord = {Tree T H}
                         {Show LeftRecord}
-                        LeftTree = {Nth LeftRecord 1}
-                        {Show 'Here 1'}
-                        LeftUsedStrings = {Nth LeftRecord 2}
-                        {Show 'Here 2'}
-                        LeftRefs = {Nth LeftRecord 3}
-                        {Show 'Here 3'}
+                        % {Show {Length LeftRecord}}
+                        {Show 'Left Record done'}
+                        LeftTree = LeftRecord.1
+                        {Show 'Left Tree done'}
+                        LeftUsedTokens = LeftRecord.2
+                        {Show 'Left Used Tokens done'}
+                        LeftRefs = LeftRecord.3
 
-                        ListWithoutUsed = {FoldL LeftUsedStrings fun {$ Acc Elem}
+
+                        {Show 'Folding'}
+                        UnusedRemainingTokens = {FoldL LeftUsedTokens fun {$ Acc Elem}
                             case Acc of H|T then
                                 if H == Elem then
                                     T
@@ -98,115 +92,57 @@ declare
                                     Acc
                                 end
                             end
-                        end List}
+                        end Tokens}
 
-                        RightRecord = {Tree ListWithoutUsed nil nil}
-                        {Show 'line 99 after call'}
-                        RightTree = {Nth RightRecord 1}
-                        RightUsedStrings = {Nth RightRecord 2}
-                        RightRefs = {Nth RightRecord 3}
+                        {Show 'Right Record'}
+                        RightRecord = {Tree UnusedRemainingTokens nil}
+                        RightTree = RightRecord.1
+                        RightUsedTokens = RightRecord.2
+                        RightRefs = RightRecord.3
 
-                        {Show 'sera???'}
-                        {Show 'LeftUsedStrings'}
-                        {Show LeftUsedStrings}
-                        {Show 'RightUsedStrings'}
-                        {Show RightUsedStrings}
+                        CurrentNode = {New Node init(H LeftTree RightTree nil)}
+                        AppendedUsedStringsList = {Append LeftUsedTokens RightUsedTokens}
+                        AppendedRefsList = {Append LeftRefs RightRefs}
 
-                        ThisNode = {New Node init(H LeftTree RightTree nil)}
-                        {Show 'ThisNode'}
-                        {Show LeftUsedStrings}
-                        {Show RightUsedStrings}
-                        % AppendedUsedStringsList = {List.append LeftUsedStrings RightUsedStrings}
-                        AppendedUsedStringsList = LeftUsedStrings | RightUsedStrings
-                        {Show AppendedUsedStringsList}
-                        {Show 'AppendedUsedStringsList'}
-                        % AppendedRefsList = {List.append LeftRefs RightRefs}
-                        AppendedRefsList = LeftRefs | RightRefs
-                        {Show AppendedRefsList}
-                        {Show 'AppendedRefsList'}
-
-                        ThisNode | AppendedUsedStringsList | AppendedRefsList
+                        record(CurrentNode AppendedUsedStringsList AppendedRefsList)
                     end
                 else
-                    if H \= nil then
-                        {Show 'H is not nil'}
-                        local Dedo ThisNode Ref UsedStringsList CurrentRefs in
+                    {Show 'Found leaf'}
+                    {Show H}
+                    local CurrentNode Ref UsedTokens CurrentRefs in
+                        Ref = {New Reference init(H nil)}
+                        CurrentNode = {New Node init(H nil nil Ref)}
+                        UsedTokens = [H]
+                        CurrentRefs = [Ref]
 
-                            {Show 'assign ref'}
-                            Ref = {New Reference init(H nil)}
-                            {Show 'assigned node'}
-                            ThisNode = {New Node init(H nil nil Ref)}
-                            {Show 'assigned used strings'}
-                            % UsedStringsList = H | nil
-                            UsedStringsList = [H]
-                            {Show 'assigned refss'}
-                            % CurrentRefs = Ref | Refs
-                            if Refs == nil then
-                                CurrentRefs = [Ref]
-                            else
-                                CurrentRefs = {List.append Ref Refs}
-                            end
-
-
-                            {Show 'hola'}
-                            {Show 'sldkfj'}
-                            {Show UsedStringsList}
-                            {Show CurrentRefs}
-                            {Show 'next'}
-                            {Show 'end'}
-                            Dedo = ThisNode | UsedStringsList | CurrentRefs
-                            % ThisNode | UsedStringsList | CurrentRefs
-                            {Show Dedo}
-                            Dedo
-
-
-                        end
-                    else
-                        {Show 'H is nil'}
-                        {New Node init("" nil nil nil)}
+                        record(CurrentNode UsedTokens CurrentRefs)
                     end
                 end
             else
-                {Show 'lskdjflskdjfls'}
-                List
+                Tokens
             end
         else
-            {Show 'Operator is not nil'}
-            local Rec RightTree UsedStrings ActualRefs InnerNode OuterNode AppendedUsedListStrings RefList in
-                Rec = {Tree List nil Refs}
-                {Show 'line 160 after call'}
-                RightTree = {Nth Rec 1}
-                UsedStrings = {Nth Rec 2}
-                ActualRefs = {Nth Rec 3}
-
-                {Show 'line 165'}
-                {Show Op}
-                {Show RightTree}
-                {Show UsedStrings}
-                {Show ActualRefs}
-
-                {Show 'Line 171'}
-                InnerNode = {New Node init(Op nil nil nil)}
-                {Show InnerNode}
-                OuterNode = {New Node init("@" InnerNode RightTree nil)}
-                {Show OuterNode}
-                {Show 'Err'}
-                {Show UsedStrings}
-                {Show Op}
-                AppendedUsedListStrings =  Op | UsedStrings
-                {Show AppendedUsedListStrings}
-                {Show 'Err2'}
+            {Show 'Operation found'}
+            {Show Op}
+            local Rec RightTree UsedStrings Refs LeftTree CurrentNode CurrentUsedStrings in
+                Rec = {Tree Tokens nil}
+                RightTree = Rec.1
+                UsedStrings = Rec.2
+                Refs = Rec.3
                 {Show Refs}
-                {Show ActualRefs}
-                RefList = Refs | ActualRefs
-                {Show RefList}
 
-                OuterNode | AppendedUsedListStrings | RefList
+                {Show 'Operator left tree done'}
+                LeftTree = {New Node init(Op nil nil nil)}
+                CurrentNode = {New Node init("@" LeftTree RightTree nil)}
+                CurrentUsedStrings =  Op | UsedStrings
+                {Show 'Done'}
+
+                record(CurrentNode CurrentUsedStrings Refs)
             end
         end
     end
 
 local NodeList in
-    NodeList = {Tree ["-" "*" "x" "y" "+" "z" "w"] nil nil}
+    NodeList = {Tree ["-" "*" "x" "y" "+" "z" "w"] nil}
     {Show NodeList}
 end
