@@ -1,51 +1,83 @@
-case class Node(value: String, left: Option[Node], right: Option[Node])
+class Reference(val varName: String, var value: Option[Int]):
+  override def toString(): String = s"Reference($varName, $value)"
+
+case class Node(
+    value: String,
+    left: Option[Node],
+    right: Option[Node],
+    ref: Option[Reference] = None
+)
 
 @main def main(): Unit =
   println("Hello, world!")
-  val stringList = List("-", "*", "z", "y", "+", "w", "x")
-  val (node, ls) = tree(stringList, None)
-  print(node, ls)
-  // println()
-  // printTree(node)
+  val stringList = List("-", "*", "x", "x", "+", "x", "x")
+  val (node, ls, refs) = tree(stringList)
+  print(node)
+  println()
+  println(ls)
+
+  println(refs.length)
+  refs.foreach(ref => println(s"${ref.varName} = ${ref.value}"))
+  // refs.foreach(ref => if ref.varName == "z" then ref.value = Some(5))
+  // refs.foreach(ref => if ref.varName == "w" then ref.value = Some(3))
+  refs.foreach(ref => if ref.varName == "x" then ref.value = Some(2))
+  // refs.foreach(ref => if ref.varName == "y" then ref.value = Some(1))
+
+  print(node)
 
 def tree(
     list: List[String],
-    op: Option[String]
-): Tuple2[Node, List[String]] =
+    op: Option[String] = None,
+    refs: List[Reference] = Nil
+): Tuple3[Node, List[String], List[Reference]] =
   op match
     case Some(op) =>
       println(s"Operator is: $op")
-      val (rightTree, usedStrings) = tree(list, None)
+      val (rightTree, usedStrings, actualRefs) = tree(list)
+
       (
         Node("@", Some(Node(op, None, None)), Some(rightTree)),
-        op :: usedStrings
+        op :: usedStrings,
+        refs ::: actualRefs
       )
     case None =>
       list match
         case head :: tail if Set("+", "-", "*", "/").contains(head) =>
           println(s"Found operator: $head")
-          val (leftTree, leftUsedStrings) =
-            tree(tail, Some(head))
+          val (leftTree, leftUsedStrings, leftRefs) = tree(tail, Some(head))
 
           println(leftUsedStrings)
 
-          val listWithoutUsed = list.dropWhile(leftUsedStrings.contains)
+          // val listWithoutUsed = list.dropWhile(leftUsedStrings.contains)
+          val listWithoutUsed = leftUsedStrings.foldLeft(list)((acc, element) =>
+            if acc.head == element then acc.tail else acc
+          )
+
           println(listWithoutUsed)
-          val (rightTree, rightUsedStrings) = tree(listWithoutUsed, None)
+          val (rightTree, rightUsedStrings, rightRefs) = tree(listWithoutUsed)
           println(rightUsedStrings)
+
           (
             Node("@", Some(leftTree), Some(rightTree)),
-            leftUsedStrings ::: rightUsedStrings
+            leftUsedStrings ::: rightUsedStrings,
+            leftRefs ::: rightRefs
           )
 
         case _ =>
           list.headOption match
             case Some(head) =>
               println(s"Found leaf: $head")
-              (Node(head, None, None), head :: Nil)
+
+              val ref = Reference(head, None)
+
+              (
+                Node(head, None, None, Some(ref)),
+                head :: Nil,
+                ref :: refs
+              )
             case None =>
               println("No more elements")
-              (Node("", None, None), Nil)
+              (Node("", None, None), Nil, Nil)
           end match
       end match
   end match
