@@ -1,4 +1,4 @@
-declare Env Str2Lst Parse ParseFun Infix2Prefix 
+declare Env Str2Lst Parse ParseFun Infix2Prefix
 
 %% Split a string by spaces
 fun {Str2Lst Data}
@@ -42,7 +42,7 @@ fun {Infix2Prefix Data}
                             H2|T2|nil = {PopWhile Stack Res fun {$ X} {Not X=="("} end}
                             _|T3 = T2
                             {Infix2Postfix T T3 H2}
-                        end 
+                        end
                     [] "+" then
                         local H2 T2 in
                             H2|T2|nil = {PopWhile Stack Res fun {$ X} {List.member X ["*" "/"]} end}
@@ -66,7 +66,7 @@ fun {Infix2Prefix Data}
                     else
                         {Infix2Postfix T Stack H|Res}
                     end
-                else 
+                else
                     Res
                 end
             end
@@ -79,15 +79,19 @@ end
 
 %% /////////////////////////////////////////////////////////////////////////////
 %%
-%% It is necessary that every element in a program its separated by single space.  
+%% It is necessary that every element in a program its separated by single space.
 %%
 %% /////////////////////////////////////////////////////////////////////////////
 
 
-{Show {Infix2Prefix {Str2Lst "fun hola X Y Z = var A = X * Y var B = A + 2 in A * B + Z"}}}
+% {Show {Infix2Prefix {Str2Lst "fun hola X Y Z = var A = X * Y var B = A + 2 in A * B + Z"}}}
 
-{Show {Infix2Prefix {Str2Lst "fun square x = x * x"}}}
+% {Show {Infix2Prefix {Str2Lst "fun square x = x * x"}}}
 
+% fun twice x = x + x
+% twice 5
+
+{Browse {Infix2Prefix {Str2Lst "fun twice x = x + x \n twice 5"}}}
 
 
 
