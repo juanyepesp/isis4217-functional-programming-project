@@ -1,4 +1,5 @@
-declare Env Str2Lst Parse ParseFun Infix2Prefix ParseFunction FindFunction FunctionName FunctionBody BuildTree BuildTreeHelper
+        % return something
+declare Env Str2Lst Parse ParseFun Infix2Prefix ParseFunction FindFunction FunctionName FunctionBody BuildTree BuildTreeHelper ParseFunctionBody ParseFunctionName
 
 fun {Str2Lst Data}
     {String.tokens Data & }
@@ -74,9 +75,25 @@ fun {Infix2Prefix Data}
     end
 end
 
-fun {FindFunction ProgramLi}
+fun {FindFunctionName ProgramLi}
     local X in
         {List.takeWhile ProgramLi fun {$ X} X \= "=" end  X }
+        X
+    end
+end
+
+fun {FindFunctionBody ProgramLi}
+    local X in
+        {List.dropWhile ProgramLi fun {$ X} X \= "=" end  X }
+        {List.drop X 1}
+    end
+end
+
+
+
+fun {FindFunctionIn ProgramLi}
+    local X in
+        {List.takeWhile ProgramLi fun {$ X} X \= "in" end  X }
         X
     end
 end
@@ -103,22 +120,43 @@ end
 
 
 fun {FunctionName ProgramStr}
-    {FindFunction {Str2Lst ProgramStr}}
+    {FindFunctionName {Str2Lst ProgramStr}}
 end
 
 fun {FunctionBody ProgramStr}
-    {Reverse {FindFunction {Reverse {Str2Lst ProgramStr}}}}
+    {FindFunctionBody {Str2Lst ProgramStr}}
+end
+
+fun {ParseFunctionBody Body}
+    case Body of H|T then
+        case H of "var" then 
+            local VarDef FunDef in
+                VarDef = {FindFunctionIn T} 
+                FunDef = {Reverse {FindFunctionIn {Reverse T}}}
+                % [record(name: "@y" value: {FindFunctionBody VarDef}) FunDef]
+                {BuildTree FunDef}
+                {BuildTree {FindFunctionBody VarDef}}
+                % TODO: put the var (@y) in the tree
+            end 
+        else {BuildTree Body}
+        end
+    end
+end
+
+fun {ParseFunctionName NameLi}
+    [{Nth NameLi 2} {List.drop NameLi 2}]
 end
     
 fun {ParseFunction ProgramStr}
     local Name Body BTree in
-        Name = {FunctionName ProgramStr}
-        Body = {FunctionBody ProgramStr}
-        BTree = {BuildTree Body}
-        BTree
+        Name = {ParseFunctionName {FunctionName ProgramStr}}
+        Body = {ParseFunctionBody {FunctionBody ProgramStr}}
+        [record(name: {Nth Name 1} param: {Nth Name 2} body: {Nth Body 2}) {Nth Body 1}]
+
         % return something
     end
 end
 
 
-{Browse {ParseFunction "fun twice x y z w = x + x + y"}}
+% {Browse {ParseFunction "fun fourtimes x y z w d f g h = var y = x * x in y + y"}}
+{Browse {ParseFunction "fun fourtimes x = x * x + x * x"}}
