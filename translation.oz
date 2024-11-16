@@ -1,4 +1,3 @@
-
 declare
     class Reference
         attr varName value
@@ -82,13 +81,13 @@ declare
                 if {Member H ["+" "-" "*" "/"]} then
                     local ListWithoutUsed LeftRecord LeftTree LeftUsedStrings LeftRefs RightRecord RightTree RightUsedStrings RightRefs in
                         LeftRecord = {Tree T H nil}
-
+                        {Show 'line 84 after call'}
                         LeftTree = {Nth LeftRecord 1}
                         LeftUsedStrings = {Nth LeftRecord 2}
                         LeftRefs = {Nth LeftRecord 3}
 
                         ListWithoutUsed = {FoldL LeftUsedStrings fun {$ Acc Elem}
-                            case Acc of [H|T] then
+                            case Acc of H|T then
                                 if {List.head H} = Elem then
                                     T
                                 else
@@ -98,17 +97,23 @@ declare
                         end List}
 
                         RightRecord = {Tree ListWithoutUsed nil nil}
-
+                        {Show 'line 99 after call'}
                         RightTree = {Nth RightRecord 1}
                         RightUsedStrings = {Nth RightRecord 2}
                         RightRefs = {Nth RightRecord 3}
 
-                        [{New Node init("@" LeftTree RightTree nil)} | [{List.append(LeftUsedStrings RightUsedStrings)}] | [{List.append(LeftRefs RightRefs)}]]
+                        {Show 'sera???'}
+                        {Show 'LeftUsedStrings'}
+                        {Show LeftUsedStrings}
+                        {Show 'RightUsedStrings'}
+                        {Show RightUsedStrings}
+
+                        {New Node init("@" LeftTree RightTree nil)} | {List.append LeftUsedStrings RightUsedStrings } | {List.append LeftRefs RightRefs}
                     end
                 else
                     if H \= nil then
                         {Show 'H is not nil'}
-                        local ThisNode Ref UsedStringsList CurrentRefs in
+                        local Dedo ThisNode Ref UsedStringsList CurrentRefs in
 
                             {Show 'assign ref'}
                             Ref = {New Reference init(H nil)}
@@ -132,13 +137,16 @@ declare
                             {Show CurrentRefs}
                             {Show 'next'}
                             {Show 'end'}
-                            ThisNode | UsedStringsList | CurrentRefs
+                            Dedo = ThisNode | UsedStringsList | CurrentRefs
+                            % ThisNode | UsedStringsList | CurrentRefs
+                            {Show Dedo}
+                            Dedo
 
 
                         end
                     else
                         {Show 'H is nil'}
-                        [{New Node init("" nil nil nil)} | nil | nil]
+                        {New Node init("" nil nil nil)}
                     end
                 end
             else
@@ -147,13 +155,36 @@ declare
             end
         else
             {Show 'Operator is not nil'}
-            local Rec RightTree UsedStrings ActualRefs in
+            local Rec RightTree UsedStrings ActualRefs InnerNode OuterNode AppendedUsedListStrings RefList in
                 Rec = {Tree List nil Refs}
+                {Show 'line 160 after call'}
                 RightTree = {Nth Rec 1}
                 UsedStrings = {Nth Rec 2}
                 ActualRefs = {Nth Rec 3}
 
-                [{New Node init("@" {New Node init(Op nil nil nil)} RightTree)} | [Op | UsedStrings] | [{List.append(Refs ActualRefs)}]]
+                {Show 'line 165'}
+                {Show Op}
+                {Show RightTree}
+                {Show UsedStrings}
+                {Show ActualRefs}
+
+                {Show 'Line 171'}
+                InnerNode = {New Node init(Op nil nil nil)}
+                {Show InnerNode}
+                OuterNode = {New Node init("@" InnerNode RightTree nil)}
+                {Show OuterNode}
+                {Show 'Err'}
+                {Show UsedStrings}
+                {Show Op}
+                AppendedUsedListStrings =  Op | UsedStrings
+                {Show AppendedUsedListStrings}
+                {Show 'Err2'}
+                {Show Refs}
+                {Show ActualRefs}
+                RefList = Refs |  ActualRefs
+                {Show RefList}
+
+                OuterNode | AppendedUsedListStrings | RefList
             end
         end
     end
