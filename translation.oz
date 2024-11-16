@@ -79,16 +79,20 @@ declare
                 {Show H}
                 {System.showInfo H}
                 if {Member H ["+" "-" "*" "/"]} then
-                    local ListWithoutUsed LeftRecord LeftTree LeftUsedStrings LeftRefs RightRecord RightTree RightUsedStrings RightRefs in
+                    local ListWithoutUsed LeftRecord LeftTree LeftUsedStrings LeftRefs RightRecord RightTree RightUsedStrings RightRefs ThisNode AppendedUsedStringsList AppendedRefsList in
                         LeftRecord = {Tree T H nil}
                         {Show 'line 84 after call'}
+                        {Show LeftRecord}
                         LeftTree = {Nth LeftRecord 1}
+                        {Show 'Here 1'}
                         LeftUsedStrings = {Nth LeftRecord 2}
+                        {Show 'Here 2'}
                         LeftRefs = {Nth LeftRecord 3}
+                        {Show 'Here 3'}
 
                         ListWithoutUsed = {FoldL LeftUsedStrings fun {$ Acc Elem}
                             case Acc of H|T then
-                                if {List.head H} = Elem then
+                                if H == Elem then
                                     T
                                 else
                                     Acc
@@ -108,7 +112,16 @@ declare
                         {Show 'RightUsedStrings'}
                         {Show RightUsedStrings}
 
-                        {New Node init("@" LeftTree RightTree nil)} | {List.append LeftUsedStrings RightUsedStrings } | {List.append LeftRefs RightRefs}
+                        ThisNode = {New Node init(H LeftTree RightTree nil)}
+                        {Show 'ThisNode'}
+                        {Show LeftUsedStrings}
+                        {Show RightUsedStrings}
+                        AppendedUsedStringsList = {List.append LeftUsedStrings RightUsedStrings}
+                        {Show 'AppendedUsedStringsList'}
+                        AppendedRefsList = {List.append LeftRefs RightRefs}
+                        {Show 'AppendedRefsList'}
+
+                        ThisNode | AppendedUsedStringsList | AppendedRefsList
                     end
                 else
                     if H \= nil then
