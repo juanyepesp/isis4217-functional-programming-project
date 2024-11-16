@@ -116,9 +116,13 @@ declare
                         {Show 'ThisNode'}
                         {Show LeftUsedStrings}
                         {Show RightUsedStrings}
-                        AppendedUsedStringsList = {List.append LeftUsedStrings RightUsedStrings}
+                        % AppendedUsedStringsList = {List.append LeftUsedStrings RightUsedStrings}
+                        AppendedUsedStringsList = LeftUsedStrings | RightUsedStrings
+                        {Show AppendedUsedStringsList}
                         {Show 'AppendedUsedStringsList'}
-                        AppendedRefsList = {List.append LeftRefs RightRefs}
+                        % AppendedRefsList = {List.append LeftRefs RightRefs}
+                        AppendedRefsList = LeftRefs | RightRefs
+                        {Show AppendedRefsList}
                         {Show 'AppendedRefsList'}
 
                         ThisNode | AppendedUsedStringsList | AppendedRefsList
@@ -194,7 +198,7 @@ declare
                 {Show 'Err2'}
                 {Show Refs}
                 {Show ActualRefs}
-                RefList = Refs |  ActualRefs
+                RefList = Refs | ActualRefs
                 {Show RefList}
 
                 OuterNode | AppendedUsedListStrings | RefList
