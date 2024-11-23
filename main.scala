@@ -20,12 +20,13 @@ case class Node(
   refs.foreach(ref => println(s"${ref.varName} = ${ref.value}"))
   // refs.foreach(ref => if ref.varName == "z" then ref.value = Some(5))
   // refs.foreach(ref => if ref.varName == "w" then ref.value = Some(3))
-  refs.foreach(ref => if ref.varName == "x" then ref.value = Some(2))
+  refs.foreach(ref => if ref.varName == "x" then ref.value = Some(5))
   // refs.foreach(ref => if ref.varName == "y" then ref.value = Some(1))
 
-  print(node)
-
+  // print(node)
   // printTree(node)
+  println()
+  print(evalTree(node))
 
 def tree(
     tokens: List[String],
@@ -92,3 +93,31 @@ def printTree(node: Node): Unit =
       println("right: None")
   end match
 end printTree
+
+def evalTree(node: Node): Tuple2[Option[Int], Option[String]] =
+  node.value match
+    case "@" =>
+      val (leftValue, leftOp) = evalTree(node.left.get)
+      val (rightValue, _) = evalTree(node.right.get)
+
+      (leftValue, leftOp) match
+        case (Some(value), Some(leftOp)) =>
+          (Some(evalOp(value, rightValue.get, leftOp)), None)
+        case (None, Some(op)) =>
+          (rightValue, Some(op))
+        case _ => (None, None)
+
+    case "+" | "-" | "*" | "/" =>
+      (None, Some(node.value))
+    case _ =>
+      node.ref match
+        case Some(ref) => (ref.value, None)
+        case None      => (None, None)
+
+def evalOp(leftValue: Int, rightValue: Int, op: String): Int =
+  println(s"leftValue: $leftValue, rightValue: $rightValue, op: $op")
+  op match
+    case "+" => leftValue + rightValue
+    case "-" => leftValue - rightValue
+    case "*" => leftValue * rightValue
+    case "/" => leftValue / rightValue
