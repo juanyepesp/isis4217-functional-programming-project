@@ -1,5 +1,5 @@
         % return something
-declare Env Str2Lst Parse ParseFun Infix2Prefix ParseFunction FindFunction FunctionName FunctionBody BuildTree BuildTreeHelper ParseFunctionBody ParseFunctionName
+declare Env Str2Lst Parse ParseFun Infix2Prefix ParseFunction FindFunction FunctionName FunctionBody BuildTree BuildTreeHelper ParseFunctionBody ParseFunctionName GetFunDef GetFunCall
 
 fun {Str2Lst Data}
     {String.tokens Data & }
@@ -89,7 +89,19 @@ fun {FindFunctionBody ProgramLi}
     end
 end
 
+fun {GetFunDef ProgramLi }
+    local X in
+        {List.takeWhile ProgramLi fun {$ X} X \= "\n" end  X }
+        X
+    end
+end
 
+fun {GetFunCall ProgramLi }
+    local X in
+        {List.dropWhile ProgramLi fun {$ X} X \= "\n" end  X }
+        {List.drop X 1}
+    end
+end
 
 fun {FindFunctionIn ProgramLi}
     local X in
@@ -119,25 +131,25 @@ fun {BuildTreeHelper InfixBody}
 end
 
 
-fun {FunctionName ProgramStr}
-    {FindFunctionName {Str2Lst ProgramStr}}
+fun {FunctionName FunDefLi}
+    {FindFunctionName FunDefLi}
 end
 
-fun {FunctionBody ProgramStr}
-    {FindFunctionBody {Str2Lst ProgramStr}}
+fun {FunctionBody FunDefLi}
+    {FindFunctionBody FunDefLi}
 end
 
 fun {ParseFunctionBody Body}
     case Body of H|T then
-        case H of "var" then 
+        case H of "var" then
             local VarDef FunDef in
-                VarDef = {FindFunctionIn T} 
+                VarDef = {FindFunctionIn T}
                 FunDef = {Reverse {FindFunctionIn {Reverse T}}}
                 % [record(name: "@y" value: {FindFunctionBody VarDef}) FunDef]
-                {BuildTree FunDef}
-                {BuildTree {FindFunctionBody VarDef}}
+                % {BuildTree FunDef}
+                % {BuildTree {FindFunctionBody VarDef}}
                 % TODO: put the var (@y) in the tree
-            end 
+            end
         else {BuildTree Body}
         end
     end
@@ -146,17 +158,23 @@ end
 fun {ParseFunctionName NameLi}
     [{Nth NameLi 2} {List.drop NameLi 2}]
 end
+
+fun {ParserFunctionCall CallLi}
+    CallFli
+end
     
 fun {ParseFunction ProgramStr}
-    local Name Body BTree in
-        Name = {ParseFunctionName {FunctionName ProgramStr}}
-        Body = {ParseFunctionBody {FunctionBody ProgramStr}}
-        [record(name: {Nth Name 1} param: {Nth Name 2} body: {Nth Body 2}) {Nth Body 1}]
-
-        % return something
+    local ProgramLi FunDefiniton FunCall Name Body in
+        ProgramLi = {Str2Lst ProgramStr}
+        FunDefiniton = {GetFunDef ProgramLi}
+        FunCall = {GetFunCall ProgramLi}
+        Name = {ParseFunctionName {FunctionName FunDefiniton}}
+        Body = {ParseFunctionBody {FunctionBody FunDefiniton}}
+        FunCall
+        % [record(name: {Nth Name 1} param: {Nth Name 2} body: {Nth Body 2}) {Nth Body 1}]
     end
 end
 
 
 % {Browse {ParseFunction "fun fourtimes x y z w d f g h = var y = x * x in y + y"}}
-{Browse {ParseFunction "fun fourtimes x = x * x + x * x"}}
+{Browse {ParseFunction "fun fourtimes x = x * x + x * x \n fourtimes 4"}}
