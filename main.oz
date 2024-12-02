@@ -293,17 +293,72 @@ end
 fun {ParseFunctionBody Body}
     case Body of H|T then
         case H of "var" then
-            local VarDef FunDef in
-                VarDef = {FindFunctionIn T}
+            local VarDef FunDef VarName VarBody VarTree FunTree Right = {NewCell nil} RightValue = {NewCell nil} in
+                VarDef = {FindFunctionIn T} 
+                VarName = {Nth {List.take VarDef 1} 1} % ["y"]
+                VarBody = {List.drop VarDef 2}
                 FunDef = {Reverse {FindFunctionIn {Reverse T}}}
-                % [record(name: "@y" value: {FindFunctionBody VarDef}) FunDef]
+                % {Show VarDef#FunDef}
+                VarTree = {Tree {Infix2Prefix VarBody} nil} % y = x * x -> x * x
+                FunTree = {Tree {Infix2Prefix FunDef} nil}
+                {Show FunTree}
+                % {PrintTree VarTree.1}
+                {ReplaceReferencesInTree FunTree VarName VarTree.1}
+                {Show 'replaced completed'}
+                {PrintTree FunTree.1}
+                record(FunTree.1 FunTree.2 VarTree.3) % Replace references with those of inner variables (ie. param)
                 % {BuildTree FunDef}
                 % {BuildTree {FindFunctionBody VarDef}}
                 % TODO: put the var (@y) in the tree
             end
         else {Tree {Infix2Prefix Body} nil}
         end
+    else nil
     end
+end
+
+
+% Replaces Var References or FunctionCall References
+proc {ReplaceReferencesInTreeHelper NodeElem ThingToReplace TreeToInsert} 
+    {Show ThingToReplace}
+    {Show TreeToInsert}
+    local NodeValue = {NewCell nil} LeftNode = {NewCell nil} RightNode = {NewCell nil} LeftValue = {NewCell nil} RightValue = {NewCell nil} in
+        {NodeElem getValue(NodeValue)}
+        {NodeElem getLeft(LeftNode)}
+        {NodeElem getRight(RightNode)}
+        {Show @NodeValue}
+        if @NodeValue == "@" then
+            {@LeftNode getValue(LeftValue)}
+            {@RightNode getValue(RightValue)}
+
+            % {Show @LeftNode}
+            % {Show @RightNode}
+
+
+            % {Show @LeftValue#@RightValue}
+
+            if @LeftValue == ThingToReplace then 
+                {NodeElem setLeft(TreeToInsert)} 
+            else 
+                {ReplaceReferencesInTreeHelper @LeftNode ThingToReplace TreeToInsert}
+            end
+
+            if @RightValue == ThingToReplace then 
+                {NodeElem setRight(TreeToInsert)} 
+            else 
+                {ReplaceReferencesInTreeHelper @RightNode ThingToReplace TreeToInsert}
+            end
+        elseif @LeftNode \= nil andthen @RightNode \= nil then
+            {ReplaceReferencesInTreeHelper @LeftNode ThingToReplace TreeToInsert}
+            {ReplaceReferencesInTreeHelper @RightNode ThingToReplace TreeToInsert}
+        else 
+            {Show ' '}
+        end
+    end
+end
+
+proc {ReplaceReferencesInTree FuncTree ThingToReplace TreeToInsert}
+    {ReplaceReferencesInTreeHelper FuncTree.1 ThingToReplace TreeToInsert}
 end
 
 % Update tree reference list with actual call values
@@ -426,14 +481,13 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MAIN CALLER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-fun {ParseFunction ProgramStr}
+fun {Run ProgramStr}
     local ProgramLi FunDefiniton FunCall Name FuncTree RefList FunctionParamCall FunctionParamCallDict Ret Ans in
         ProgramLi = {Str2Lst ProgramStr}
         FunDefiniton = {GetFunDef ProgramLi}
         FunCall = {GetFunCall ProgramLi}
         Name = {ParseFunctionName {FindFunctionName FunDefiniton}}  
         FuncTree = {ParseFunctionBody {FindFunctionBody FunDefiniton}}
-        
         RefList = {Nth Name 2}
         FunctionParamCall = {RecursiveParsingWithParentheses FunCall RefList} 
         FunctionParamCallDict = {ListToDict FunctionParamCall}
@@ -445,5 +499,6 @@ fun {ParseFunction ProgramStr}
     end
 end
 
-% {Browse {ParseFunction "fun fourtimes x y z w d f g h = var y = x * x in y + y"}}
-{Browse {ParseFunction "fun sum x y z = ( x + y ) * z \n sum 4 5 6"}}
+{Browse {Run "fun fourtimes x z = var y = x * z in y + y \n fourtimes 4 3"}}
+% {Browse {Run "fun sum x y z = ( x + y ) * z \n sum 4 5 6"}}
+% {Browse {Run "fun sqr x = x * x \n sqr ( sqr ( sqr 2 ) )"}}
