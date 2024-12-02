@@ -93,6 +93,6 @@ fun {RecursiveCallingWithParentheses CallList ReferencesList}
 end
 
 local ReferencesList in
-  ReferencesList = Refs  = ["x"]
+  ReferencesList = ["x"]
   {Browse {RecursiveCallingWithParentheses ["sqr" "(" "sqr" "(" "sqr"  "2" ")" ")"] ReferencesList}}
 end

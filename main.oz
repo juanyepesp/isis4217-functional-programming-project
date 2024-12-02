@@ -1,11 +1,15 @@
-        % return something
-declare Env Str2Lst Parse ParseFun Infix2Prefix ParseFunction FindFunction FunctionName FunctionBody BuildTree BuildTreeHelper ParseFunctionBody ParseFunctionName GetFunDef GetFunCall
+declare Env Str2Lst Parse ParseFun Infix2Prefix ParseFunction FindFunction ParseFunctionBody ParseFunctionName GetFunDef GetFunCall Reference Node Tree ListToDict ListToDictHelper SetReferencesOnTreeForCall
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% AUX FROM NICOLAS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 fun {Str2Lst Data}
     {String.tokens Data & }
 end
 
-%% Data is a list of the form ["(", "X", "+", "Y", ")"] en returns id prefix form ["+" "X" "Y"]
+% Data is a list of the form ["(", "X", "+", "Y", ")"] en returns id prefix form ["+" "X" "Y"]
 fun {Infix2Prefix Data}
     local Reverse Infix2Postfix in
         fun {Reverse Data Ans}
@@ -75,6 +79,82 @@ fun {Infix2Prefix Data}
     end
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CLASSES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+class Reference
+    attr varName value
+    meth init(VarName Value)
+        varName := VarName
+        value := Value
+    end
+
+    meth getVarName(Res)
+        Res := @varName
+    end
+
+    meth setVarName(Val)
+        varName := Val
+    end
+
+    meth getValue(Res)
+        Res := @value
+    end
+
+    meth setValue(Val)
+        value := Val
+    end
+end
+
+class Node
+    attr value left right ref
+    meth init(Value Left Right Ref)
+        value := Value
+        left := Left
+        right := Right
+        ref := Ref
+    end
+
+    meth getValue(Res)
+        Res := @value
+    end
+
+    meth setValue(Val)
+        value := Val
+    end
+
+    meth getLeft(Res)
+        Res := @left
+    end
+
+    meth setLeft(Val)
+        left := Val
+    end
+
+    meth getRight(Res)
+        Res := @right
+    end
+
+    meth setRight(Val)
+        right := Val
+    end
+
+    meth getRef(Res)
+        Res := @ref
+    end
+
+    meth setRef(Val)
+        ref := Val
+    end
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARSING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Isolates all thats on the LHS of the =
 fun {FindFunctionName ProgramLi}
     local X in
         {List.takeWhile ProgramLi fun {$ X} X \= "=" end  X }
@@ -82,6 +162,7 @@ fun {FindFunctionName ProgramLi}
     end
 end
 
+% Returns the function body (things after the equal)
 fun {FindFunctionBody ProgramLi}
     local X in
         {List.dropWhile ProgramLi fun {$ X} X \= "=" end  X }
@@ -89,6 +170,8 @@ fun {FindFunctionBody ProgramLi}
     end
 end
 
+% Returns the function DEFINITION as a list
+%["fun" "sum" "x" "y" "z" "=" "(" "x" "+" "y" ")" "*" "z"]
 fun {GetFunDef ProgramLi }
     local X in
         {List.takeWhile ProgramLi fun {$ X} X \= "\n" end  X }
@@ -96,10 +179,13 @@ fun {GetFunDef ProgramLi }
     end
 end
 
+% Returns the function CALL as a list
+%["sum" "4" "5" "6"]
 fun {GetFunCall ProgramLi }
     local X in
         {List.dropWhile ProgramLi fun {$ X} X \= "\n" end  X }
         {List.drop X 1}
+        
     end
 end
 
@@ -110,35 +196,100 @@ fun {FindFunctionIn ProgramLi}
     end
 end
 
-fun {BuildTree FunBody}
-    {BuildTreeHelper {Infix2Prefix FunBody}}
+% Returns the function name and parameters ["sum" ["x" "y" "z"]]
+fun {ParseFunctionName NameLi}
+    [{Nth NameLi 2} {List.drop NameLi 2}]
 end
 
-fun {BuildTreeHelper InfixBody}
-    case InfixBody of H|T then
-        if {List.member H ["+" "-" "*" "/"]} then
-            local Left Right in
-                Left = tree(left: H right: {BuildTreeHelper T})
+% Returns a list of records with name - value association
+fun {RecursiveParsingWithParentheses CallList ReferencesList}
+    % CallList - Function application as list e.g. ["fourtimes" "4"]
+    % ReferenceList - Function's def references e.g. ["x"]
+  if {Not {Or {List.member "(" CallList} {List.member ")" CallList}}} then
+      {List.zip ReferencesList {List.drop CallList 1} fun{$ Ref Arg}
+      local S in
+        S = {StringToInt Arg}
+        item(name: Ref value: S)
+      end
+    end}
+      
+  else
+      local Li FinalLi WithoutParen in
+        {List.dropWhile CallList fun {$ X} X \= "(" end  Li }
+        {List.dropWhile {Reverse Li} fun {$ X} X \= ")" end  FinalLi }
+        WithoutParen =  {List.drop {Reverse FinalLi} 1 }
+        {RecursiveParsingWithParentheses {List.take WithoutParen {List.length  WithoutParen}-1} ReferencesList}
+      end
+  end
+end
 
 
-                % Right = {BuildTreeHelper T}
-                tree(left: Left right: Left.right)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BUILDING TREE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% LITERALLY makes a tree
+fun {Tree Tokens Op}
+    if Op == nil then
+        case Tokens of H|T then
+            if {Member H ["+" "-" "*" "/"]} then
+                local UnusedRemainingTokens LeftRecord LeftTree LeftUsedTokens LeftRefs RightRecord RightTree RightUsedTokens RightRefs CurrentNode AppendedUsedStringsList AppendedRefsList in
+                    LeftRecord = {Tree T H}
+                    LeftTree = LeftRecord.1
+                    LeftUsedTokens = LeftRecord.2
+                    LeftRefs = LeftRecord.3
+
+                    UnusedRemainingTokens = {FoldL LeftUsedTokens fun {$ Acc Elem}
+                        case Acc of H|T then
+                            if H == Elem then
+                                T
+                            else
+                                Acc
+                            end
+                        end
+                    end Tokens}
+
+                    RightRecord = {Tree UnusedRemainingTokens nil}
+                    RightTree = RightRecord.1
+                    RightUsedTokens = RightRecord.2
+                    RightRefs = RightRecord.3
+
+                    CurrentNode = {New Node init("@" LeftTree RightTree nil)}
+                    AppendedUsedStringsList = {Append LeftUsedTokens RightUsedTokens}
+                    AppendedRefsList = {Append LeftRefs RightRefs}
+
+                    record(CurrentNode AppendedUsedStringsList AppendedRefsList)
+                end
+            else
+                local CurrentNode Ref UsedTokens CurrentRefs in
+                    Ref = {New Reference init(H nil)}
+                    CurrentNode = {New Node init(H nil nil Ref)}
+                    UsedTokens = [H]
+                    CurrentRefs = [Ref]
+
+                    record(CurrentNode UsedTokens CurrentRefs)
+                end
             end
         else
-            H
+            Tokens
+        end
+    else
+        local Rec RightTree UsedStrings Refs LeftTree CurrentNode CurrentUsedStrings in
+            Rec = {Tree Tokens nil}
+            RightTree = Rec.1
+            UsedStrings = Rec.2
+            Refs = Rec.3
+
+            LeftTree = {New Node init(Op nil nil nil)}
+            CurrentNode = {New Node init("@" LeftTree RightTree nil)}
+            CurrentUsedStrings =  Op | UsedStrings
+
+            record(CurrentNode CurrentUsedStrings Refs)
         end
     end
 end
 
-
-fun {FunctionName FunDefLi}
-    {FindFunctionName FunDefLi}
-end
-
-fun {FunctionBody FunDefLi}
-    {FindFunctionBody FunDefLi}
-end
-
+% Returns tree for all types of functions (with var or not)
 fun {ParseFunctionBody Body}
     case Body of H|T then
         case H of "var" then
@@ -150,31 +301,149 @@ fun {ParseFunctionBody Body}
                 % {BuildTree {FindFunctionBody VarDef}}
                 % TODO: put the var (@y) in the tree
             end
-        else {BuildTree Body}
+        else {Tree {Infix2Prefix Body} nil}
         end
     end
 end
 
-fun {ParseFunctionName NameLi}
-    [{Nth NameLi 2} {List.drop NameLi 2}]
+% Update tree reference list with actual call values
+fun {SetReferencesOnTreeForCall TreeReferences FunctionCallParameters}
+    % TreeReferences = [REFOBJECT(varname: "x", value: nil), REFOBJECT(varname: "y", value: nil)] 
+    % FunctionCallParameters = [item(name: "x" value: 4), item(name: "y" value: 5)] -> but a dictionary
+    % Expected output: [REFOBJECT(varname: "x", value: 4), REFOBJECT(varname: "y", value: 5)] 
+    case TreeReferences of H|T then 
+        case H of nil then 
+            TreeReferences 
+        else 
+            local VarName VarNameAtom VarValue in 
+                VarName = {NewCell 0}
+                {H getVarName(VarName)}
+                VarNameAtom = {StringToAtom @VarName}
+                VarValue = {Dictionary.get FunctionCallParameters VarNameAtom}
+                {H setValue(VarValue)}
+                {SetReferencesOnTreeForCall T FunctionCallParameters}
+            end
+        end
+    else 
+        TreeReferences
+    end
+end 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% HELPERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% The following two functions turn an array of records into a dictionary. 
+% NOTE: keys are atoms, proper conversion is needed 
+fun {ListToDictHelper ListOfRecords Dict} 
+    case ListOfRecords of H|T then 
+        case H of nil then Dict
+        else 
+            {Dictionary.put Dict {StringToAtom H.name} H.value}
+            {ListToDictHelper T Dict }
+        end
+    else Dict
+    end
 end
 
-fun {ParserFunctionCall CallLi}
-    CallFli
+fun {ListToDict ListOfRecords}
+    local Dict in 
+        {Dictionary.new Dict}
+        {ListToDictHelper ListOfRecords Dict}
+    end
 end
-    
-fun {ParseFunction ProgramStr}
-    local ProgramLi FunDefiniton FunCall Name Body in
-        ProgramLi = {Str2Lst ProgramStr}
-        FunDefiniton = {GetFunDef ProgramLi}
-        FunCall = {GetFunCall ProgramLi}
-        Name = {ParseFunctionName {FunctionName FunDefiniton}}
-        Body = {ParseFunctionBody {FunctionBody FunDefiniton}}
-        FunCall
-        % [record(name: {Nth Name 1} param: {Nth Name 2} body: {Nth Body 2}) {Nth Body 1}]
+
+proc {PrintTree Tree}
+    local NodeElem = {NewCell nil} Ans = {NewCell nil} in
+        {Tree getValue(Ans)}
+        {System.showInfo @Ans}
+
+        {Tree getLeft(NodeElem)}
+        if @NodeElem == nil then
+            {Show 'Left is nil'}
+        else
+            {PrintTree @NodeElem}
+        end
+
+        {Tree getRight(NodeElem)}
+        if @NodeElem == nil then
+            {Show 'Right is nil'}
+        else
+            {PrintTree @NodeElem}
+        end
+        {Show ''}
+    end
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TREE EVAULATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+fun {EvalTree NodeElem}
+    local NodeValue = {NewCell nil} Ref = {NewCell nil} RefValue = {NewCell nil} LeftRecord RightRecord LeftNode = {NewCell nil} RightNode = {NewCell nil} LeftValue LeftOp RightValue in
+        {NodeElem getValue(NodeValue)}
+        if @NodeValue == "@" then
+            {NodeElem getLeft(LeftNode)}
+            LeftRecord = {EvalTree @LeftNode}
+            LeftValue = LeftRecord.1
+            LeftOp = LeftRecord.2
+
+            {NodeElem getRight(RightNode)}
+            RightRecord = {EvalTree @RightNode}
+            RightValue = RightRecord.1
+
+            if LeftValue == nil then
+                record(RightValue LeftOp)
+            else
+                record({EvalOp LeftValue RightValue LeftOp} nil)
+            end
+
+        elseif {Member @NodeValue ["+" "-" "*" "/"]} then
+            record(nil @NodeValue)
+        else
+            {NodeElem getRef(Ref)}
+            {@Ref getValue(RefValue)}
+            record(@RefValue nil)
+        end
+    end
+end
+
+fun {EvalOp LeftValue RightValue Op}
+    case Op of
+        "+" then
+            LeftValue + RightValue
+        [] "-" then
+            LeftValue - RightValue
+        [] "*" then
+            LeftValue * RightValue
+        [] "/" then
+            LeftValue / RightValue
     end
 end
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MAIN CALLER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+fun {ParseFunction ProgramStr}
+    local ProgramLi FunDefiniton FunCall Name FuncTree RefList FunctionParamCall FunctionParamCallDict Ret Ans in
+        ProgramLi = {Str2Lst ProgramStr}
+        FunDefiniton = {GetFunDef ProgramLi}
+        FunCall = {GetFunCall ProgramLi}
+        Name = {ParseFunctionName {FindFunctionName FunDefiniton}}  
+        FuncTree = {ParseFunctionBody {FindFunctionBody FunDefiniton}}
+        
+        RefList = {Nth Name 2}
+        FunctionParamCall = {RecursiveParsingWithParentheses FunCall RefList} 
+        FunctionParamCallDict = {ListToDict FunctionParamCall}
+        Ret = {SetReferencesOnTreeForCall FuncTree.3 FunctionParamCallDict}
+
+        % Evaluate
+        Ans = {EvalTree FuncTree.1}
+        Ans.1
+    end
+end
+
 % {Browse {ParseFunction "fun fourtimes x y z w d f g h = var y = x * x in y + y"}}
-{Browse {ParseFunction "fun fourtimes x = x * x + x * x \n fourtimes 4"}}
+{Browse {ParseFunction "fun sum x y z = ( x + y ) * z \n sum 4 5 6"}}
