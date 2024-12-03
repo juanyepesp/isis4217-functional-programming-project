@@ -504,28 +504,40 @@ fun {EvalOp LeftValue RightValue Op}
     end
 end
 
+fun {EvalFunctionCall ParsedFunCall FuncTree Result}
+    % We have to build a tree based on the function call parsing
+    % Then we have to replace every instance of the call in the tree with FuncDefTree -> We can reuse the ReplaceReferencesInTree function
+    % That way, we have a single tree with references that we can evaluate 
+
+    % la forma de esteban tambien podria servir solo que es un camello con los references
+end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MAIN CALLER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
 fun {Run ProgramStr}
-    local ProgramLi FunDefiniton FunCall Name FuncDefTree RefList FunctionParamCall FunctionParamCallDict Ret Ans in
+    local ProgramLi FunDefiniton FunCall Name FuncDefTree RefList FunctionParamCall FunctionParamCallDict Ret Ans ParsedFunCall in
         ProgramLi = {Str2Lst ProgramStr}
+
         FunDefiniton = {GetFunDef ProgramLi}
-        FunCall = {GetFunCall ProgramLi}
-        % TODO: Build FunCallTree
-        % TODO: Replacement of FuncDefTree 
-        Name = {ParseFunctionName {FindFunctionName FunDefiniton}}  
         FuncDefTree = {ParseFunctionBody {FindFunctionBody FunDefiniton}}
+
+        FunCall = {GetFunCall ProgramLi}
+        ParsedFunCall = {ParseFunctionCall FunCall}
+
+        Name = {ParseFunctionName {FindFunctionName FunDefiniton}}  
         RefList = {Nth Name 2}
         FunctionParamCall = {RecursiveParsingWithParentheses FunCall RefList} 
         FunctionParamCallDict = {ListToDict FunctionParamCall}
         Ret = {SetReferencesOnTreeForCall FuncDefTree.3 FunctionParamCallDict}
+        
 
         % Evaluate
-        Ans = {EvalTree FuncDefTree.1}
-        Ans.1
+        Ans = {EvalFunctionCall ParsedFunCall FuncDefTree.1}
+        % Ans = {EvalTree FuncDefTree.1}
+        % Ans.1
     end
 end
 
