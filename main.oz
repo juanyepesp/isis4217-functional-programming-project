@@ -1,4 +1,4 @@
-declare Env Str2Lst Parse ParseFun Infix2Prefix ParseFunction FindFunction ParseFunctionBody ParseFunctionName GetFunDef GetFunCall Reference Node Tree ListToDict ListToDictHelper SetReferencesOnTreeForCall
+declare Env Str2Lst Parse ParseFun Infix2Prefix ParseFunction FindFunction ParseFunctionBody ParseFunctionName GetFunDef GetFunCall Reference Node Tree ListToDict ListToDictHelper SetReferencesOnTreeForCall ParseFunctionCall ParseFunctionCallHelper
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -223,6 +223,50 @@ fun {RecursiveParsingWithParentheses CallList ReferencesList}
   end
 end
 
+fun {ParseFunctionCall OriginalCallLi}
+    {ParseFunctionCallHelper OriginalCallLi nil nil}
+end
+
+fun {ParseFunctionCallHelper Li Stack CurrentList}
+    % {Show Stack#CurrentList}
+    case Li 
+    of H | T then 
+        {Show '-------------------------'}
+        {Show 'This is H:'#H}
+        {Show 'And this is T:'#T}
+        {Show 'And this is Stack:'#Stack}
+        {Show 'And this is CurrentLi:'#CurrentList}
+        case H 
+        of "(" then 
+            {ParseFunctionCallHelper T CurrentList | Stack nil}
+        [] ")" then 
+            local Rest ParentList AppRest in
+                ParentList = {Nth {List.take Stack 1} 1} % pops first element
+                {Show 'popTop'#ParentList}
+                Rest = {List.drop Stack 1} % rest of stack
+                {Show 'restStack'#Rest}
+                AppRest = {Append ParentList (CurrentList | nil)}
+                {Show 'appRest'#AppRest}
+                {ParseFunctionCallHelper T Rest AppRest }
+            end 
+        [] _ then 
+    
+            local NewCurrent in 
+                {Show 'CurrentList'#CurrentList}
+
+                if CurrentList == nil then 
+                    NewCurrent = [H]
+                else 
+                    NewCurrent = {Append CurrentList [H]}
+                end
+                {Show 'NewCurrent'#NewCurrent}
+                {ParseFunctionCallHelper T Stack NewCurrent}
+            end
+        end
+    else 
+       CurrentList
+    end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BUILDING TREE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
@@ -293,23 +337,16 @@ end
 fun {ParseFunctionBody Body}
     case Body of H|T then
         case H of "var" then
-            local VarDef FunDef VarName VarBody VarTree FunTree Right = {NewCell nil} RightValue = {NewCell nil} in
+            local VarDef FunDef VarName VarBody VarTree FunTree in
                 VarDef = {FindFunctionIn T} 
                 VarName = {Nth {List.take VarDef 1} 1} % ["y"]
                 VarBody = {List.drop VarDef 2}
                 FunDef = {Reverse {FindFunctionIn {Reverse T}}}
-                % {Show VarDef#FunDef}
                 VarTree = {Tree {Infix2Prefix VarBody} nil} % y = x * x -> x * x
                 FunTree = {Tree {Infix2Prefix FunDef} nil}
-                {Show FunTree}
-                % {PrintTree VarTree.1}
                 {ReplaceReferencesInTree FunTree VarName VarTree.1}
-                {Show 'replaced completed'}
-                {PrintTree FunTree.1}
                 record(FunTree.1 FunTree.2 VarTree.3) % Replace references with those of inner variables (ie. param)
-                % {BuildTree FunDef}
-                % {BuildTree {FindFunctionBody VarDef}}
-                % TODO: put the var (@y) in the tree
+
             end
         else {Tree {Infix2Prefix Body} nil}
         end
@@ -320,22 +357,13 @@ end
 
 % Replaces Var References or FunctionCall References
 proc {ReplaceReferencesInTreeHelper NodeElem ThingToReplace TreeToInsert} 
-    {Show ThingToReplace}
-    {Show TreeToInsert}
     local NodeValue = {NewCell nil} LeftNode = {NewCell nil} RightNode = {NewCell nil} LeftValue = {NewCell nil} RightValue = {NewCell nil} in
         {NodeElem getValue(NodeValue)}
         {NodeElem getLeft(LeftNode)}
         {NodeElem getRight(RightNode)}
-        {Show @NodeValue}
         if @NodeValue == "@" then
             {@LeftNode getValue(LeftValue)}
             {@RightNode getValue(RightValue)}
-
-            % {Show @LeftNode}
-            % {Show @RightNode}
-
-
-            % {Show @LeftValue#@RightValue}
 
             if @LeftValue == ThingToReplace then 
                 {NodeElem setLeft(TreeToInsert)} 
@@ -482,23 +510,25 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
 fun {Run ProgramStr}
-    local ProgramLi FunDefiniton FunCall Name FuncTree RefList FunctionParamCall FunctionParamCallDict Ret Ans in
+    local ProgramLi FunDefiniton FunCall Name FuncDefTree RefList FunctionParamCall FunctionParamCallDict Ret Ans in
         ProgramLi = {Str2Lst ProgramStr}
         FunDefiniton = {GetFunDef ProgramLi}
         FunCall = {GetFunCall ProgramLi}
+        % TODO: Build FunCallTree
+        % TODO: Replacement of FuncDefTree 
         Name = {ParseFunctionName {FindFunctionName FunDefiniton}}  
-        FuncTree = {ParseFunctionBody {FindFunctionBody FunDefiniton}}
+        FuncDefTree = {ParseFunctionBody {FindFunctionBody FunDefiniton}}
         RefList = {Nth Name 2}
         FunctionParamCall = {RecursiveParsingWithParentheses FunCall RefList} 
         FunctionParamCallDict = {ListToDict FunctionParamCall}
-        Ret = {SetReferencesOnTreeForCall FuncTree.3 FunctionParamCallDict}
+        Ret = {SetReferencesOnTreeForCall FuncDefTree.3 FunctionParamCallDict}
 
         % Evaluate
-        Ans = {EvalTree FuncTree.1}
+        Ans = {EvalTree FuncDefTree.1}
         Ans.1
     end
 end
 
-{Browse {Run "fun fourtimes x z = var y = x * z in y + y \n fourtimes 4 3"}}
+% {Browse {Run "fun fourtimes x z = var y = x * z in y + y \n fourtimes 4 3"}}
 % {Browse {Run "fun sum x y z = ( x + y ) * z \n sum 4 5 6"}}
-% {Browse {Run "fun sqr x = x * x \n sqr ( sqr ( sqr 2 ) )"}}
+{Browse {Run "fun sqr x = x * x \n sqr ( sqr ( sqr 2 ) )"}}

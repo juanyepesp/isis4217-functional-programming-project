@@ -1,98 +1,95 @@
-declare RecursiveCallingWithParentheses Reference Node
+% Initialize:
+% stack = []
+% current_list = []
 
-class Reference
-  attr varName value
-  meth init(VarName Value)
-      varName := VarName
-      value := Value
-  end
+% Process tokens one by one:
 
-  meth getVarName(Res)
-      Res := @varName
-  end
+% Token "sqr":
+% Add "sqr" to current_list: current_list = ["sqr"].
+% stack = []
 
-  meth setVarName(Val)
-      varName := Val
-  end
+% Token "(":
+% Push current_list to stack: stack = [["sqr"]].
+% Create a new sublist: current_list = [].
 
-  meth getValue(Res)
-      Res := @value
-  end
+% Token "sqr":
+% Add "sqr" to current_list: current_list = ["sqr"].
+% stack = [["sqr"]].
 
-  meth setValue(Val)
-      value := Val
-  end
+% Token "(":
+% Push current_list to stack: stack = [["sqr"], ["sqr"]].
+% Create a new sublist: current_list = [].
+
+% Token "sqr":
+% Add "sqr" to current_list: current_list = ["sqr"].
+% stack = [["sqr"], ["sqr"]].
+
+% Token "2":
+% Add "2" to current_list: current_list = ["sqr", "2"].
+% stack = [["sqr"], ["sqr"]].
+
+% Token ")":
+% Pop the top list from stack: parent_list = ["sqr"].
+% Append current_list to parent_list: parent_list = ["sqr", ["sqr", "2"]].
+% Set current_list = parent_list: current_list = ["sqr", ["sqr", "2"]].
+
+% Token ")":
+% Pop the top list from stack: parent_list = ["sqr"].
+% Append current_list to parent_list: parent_list = ["sqr", ["sqr", ["sqr", "2"]]].
+% Set current_list = parent_list: current_list = ["sqr", ["sqr", ["sqr", "2"]]].
+
+% Final Output:
+% ["sqr", ["sqr", ["sqr", "2"]]]
+
+
+
+declare ParseFunctionCallHelper 
+fun {ParseFunctionCallHelper Li Stack CurrentList}
+    % {Show Stack#CurrentList}
+    case Li 
+    of H | T then 
+        {Show '-------------------------'}
+        {Show 'This is H:'#H}
+        {Show 'And this is T:'#T}
+        {Show 'And this is Stack:'#Stack}
+        {Show 'And this is CurrentLi:'#CurrentList}
+        case H 
+        of "(" then 
+            {ParseFunctionCallHelper T CurrentList | Stack nil}
+        [] ")" then 
+            local Rest ParentList AppRest in
+                ParentList = {Nth {List.take Stack 1} 1} % pops first element
+                {Show 'popTop'#ParentList}
+                Rest = {List.drop Stack 1} % rest of stack
+                {Show 'restStack'#Rest}
+                AppRest = {Append ParentList (CurrentList | nil)}
+                {Show 'appRest'#AppRest}
+                {ParseFunctionCallHelper T Rest AppRest }
+            end 
+        [] _ then 
+    
+            local NewCurrent in 
+                {Show 'CurrentList'#CurrentList}
+
+                if CurrentList == nil then 
+                    NewCurrent = [H]
+                else 
+                    NewCurrent = {Append CurrentList [H]}
+                end
+                {Show 'NewCurrent'#NewCurrent}
+                {ParseFunctionCallHelper T Stack NewCurrent}
+            end
+        end
+    else 
+       CurrentList
+    end
 end
 
-class Node
-  attr value left right ref
-  meth init(Value Left Right Ref)
-      value := Value
-      left := Left
-      right := Right
-      ref := Ref
-  end
-
-  meth getValue(Res)
-      Res := @value
-  end
-
-  meth setValue(Val)
-      value := Val
-  end
-
-  meth getLeft(Res)
-      Res := @left
-  end
-
-  meth setLeft(Val)
-      left := Val
-  end
-
-  meth getRight(Res)
-      Res := @right
-  end
-
-  meth setRight(Val)
-      right := Val
-  end
-
-  meth getRef(Res)
-      Res := @ref
-  end
-
-  meth setRef(Val)
-      ref := Val
-  end
+local 
+    % Lst = ["sqr" "(" "sqr" "(" "sqr" "2" ")" ")"]
+    % Lst = ["sum_n" "1" "(" "sum_n" "1" "1" "1" "2" ")" "3" "2"]
+    Lst = ["sum_n" "1"]
+in 
+    {Browse {ParseFunctionCallHelper Lst nil nil}}
 end
 
-
-
-fun {RecursiveCallingWithParentheses CallList ReferencesList}
-  if {Not {Or {List.member "(" CallList} {List.member ")" CallList}}} then
-      {List.zip ReferencesList {List.drop CallList 1} fun{$ Ref Arg}
-      local S in
-        S = {StringToInt Arg}
-        item(name: Ref value: S)
-      end
-    end}
-    % ! THIS RETURN ASSOC WITH PARAMS AND ARGS
-
-    % sqr 3 -> recordEsteba -> iterar sobre su lista de References y actualizarlos con ese return
-    % ahi ya podemos llamar lo de esteban con una funcion simple.
-
-      
-  else
-      local Li FinalLi WithoutParen in
-        {List.dropWhile CallList fun {$ X} X \= "(" end  Li }
-        {List.dropWhile {Reverse Li} fun {$ X} X \= ")" end  FinalLi }
-        WithoutParen =  {List.drop {Reverse FinalLi} 1 }
-        {RecursiveCallingWithParentheses {List.take WithoutParen {List.length  WithoutParen}-1} ReferencesList}
-      end
-  end
-end
-
-local ReferencesList in
-  ReferencesList = ["x"]
-  {Browse {RecursiveCallingWithParentheses ["sqr" "(" "sqr" "(" "sqr"  "2" ")" ")"] ReferencesList}}
-end
