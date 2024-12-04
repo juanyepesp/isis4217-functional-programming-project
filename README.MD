@@ -1,5 +1,8 @@
 # Test Cases
 
+
+# TODO: specify parenthesis usage 
+
 ```txt
 fun sqr x = ( x + 1 ) * ( x - 1 ) \n sqr 4
 ```
