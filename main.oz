@@ -2,7 +2,7 @@ declare Env Str2Lst Parse ParseFun Infix2Prefix ParseFunction FindFunction Parse
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% AUX FROM NICOLAS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% AUX FROM NICOLAS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 fun {Str2Lst Data}
@@ -80,7 +80,7 @@ fun {Infix2Prefix Data}
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CLASSES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CLASSES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 class Reference
@@ -151,7 +151,7 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARSING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PARSING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Isolates all thats on the LHS of the =
@@ -185,7 +185,7 @@ fun {GetFunCall ProgramLi }
     local X in
         {List.dropWhile ProgramLi fun {$ X} X \= "\n" end  X }
         {List.drop X 1}
-        
+
     end
 end
 
@@ -208,11 +208,11 @@ fun {RecursiveParsingWithParentheses CallList ReferencesList}
   if {Not {Or {List.member "(" CallList} {List.member ")" CallList}}} then
       {List.zip ReferencesList {List.drop CallList 1} fun{$ Ref Arg}
       local S in
-        S = {StringToInt Arg}
+        S = {StringToFloat Arg}
         item(name: Ref value: S)
       end
     end}
-      
+
   else
       local Li FinalLi WithoutParen in
         {List.dropWhile CallList fun {$ X} X \= "(" end  Li }
@@ -229,17 +229,17 @@ end
 
 fun {ParseFunctionCallHelper Li Stack CurrentList}
     % {Show Stack#CurrentList}
-    case Li 
-    of H | T then 
+    case Li
+    of H | T then
         % {Show '-------------------------'}
         % {Show 'This is H:'#H}
         % {Show 'And this is T:'#T}
         % {Show 'And this is Stack:'#Stack}
         % {Show 'And this is CurrentLi:'#CurrentList}
-        case H 
-        of "(" then 
+        case H
+        of "(" then
             {ParseFunctionCallHelper T CurrentList | Stack nil}
-        [] ")" then 
+        [] ")" then
             local Rest ParentList AppRest in
                 ParentList = {Nth {List.take Stack 1} 1} % pops first element
                 % {Show 'popTop'#ParentList}
@@ -248,28 +248,28 @@ fun {ParseFunctionCallHelper Li Stack CurrentList}
                 AppRest = {Append ParentList (CurrentList | nil)}
                 % {Show 'appRest'#AppRest}
                 {ParseFunctionCallHelper T Rest AppRest }
-            end 
-        [] _ then 
-    
-            local NewCurrent in 
+            end
+        [] _ then
+
+            local NewCurrent in
                 % {Show 'CurrentList'#CurrentList}
 
-                if CurrentList == nil then 
+                if CurrentList == nil then
                     NewCurrent = [H]
-                else 
+                else
                     NewCurrent = {Append CurrentList [H]}
                 end
                 % {Show 'NewCurrent'#NewCurrent}
                 {ParseFunctionCallHelper T Stack NewCurrent}
             end
         end
-    else 
+    else
        CurrentList
     end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BUILDING TREE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% BUILDING TREE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % LITERALLY makes a tree
@@ -305,11 +305,22 @@ fun {Tree Tokens Op}
                     record(CurrentNode AppendedUsedStringsList AppendedRefsList)
                 end
             else
-                local CurrentNode Ref UsedTokens CurrentRefs in
-                    Ref = {New Reference init(H nil)}
+                local CurrentNode Ref UsedTokens CurrentRefs ReplaceValue in
+                    if {Or {String.isInt H} {String.isFloat H}} then
+                        ReplaceValue = {StringToFloat H}
+                    else
+                        ReplaceValue = nil
+                    end
+
+                    Ref = {New Reference init(H ReplaceValue)}
                     CurrentNode = {New Node init(H nil nil Ref)}
                     UsedTokens = [H]
-                    CurrentRefs = [Ref]
+
+                    if ReplaceValue == nil then
+                        CurrentRefs = [Ref]
+                    else
+                        CurrentRefs = nil
+                    end
 
                     record(CurrentNode UsedTokens CurrentRefs)
                 end
@@ -338,7 +349,7 @@ fun {ParseFunctionBody Body}
     case Body of H|T then
         case H of "var" then
             local VarDef FunDef VarName VarBody VarTree FunTree in
-                VarDef = {FindFunctionIn T} 
+                VarDef = {FindFunctionIn T}
                 VarName = {Nth {List.take VarDef 1} 1} % ["y"]
                 VarBody = {List.drop VarDef 2}
                 FunDef = {Reverse {FindFunctionIn {Reverse T}}}
@@ -356,7 +367,7 @@ end
 
 
 % Replaces Var References or FunctionCall References
-proc {ReplaceReferencesInTreeHelper NodeElem ThingToReplace TreeToInsert} 
+proc {ReplaceReferencesInTreeHelper NodeElem ThingToReplace TreeToInsert}
     local NodeValue = {NewCell nil} LeftNode = {NewCell nil} RightNode = {NewCell nil} LeftValue = {NewCell nil} RightValue = {NewCell nil} in
         {NodeElem getValue(NodeValue)}
         {NodeElem getLeft(LeftNode)}
@@ -365,22 +376,20 @@ proc {ReplaceReferencesInTreeHelper NodeElem ThingToReplace TreeToInsert}
             {@LeftNode getValue(LeftValue)}
             {@RightNode getValue(RightValue)}
 
-            if @LeftValue == ThingToReplace then 
-                {NodeElem setLeft(TreeToInsert)} 
-            else 
+            if @LeftValue == ThingToReplace then
+                {NodeElem setLeft(TreeToInsert)}
+            else
                 {ReplaceReferencesInTreeHelper @LeftNode ThingToReplace TreeToInsert}
             end
 
-            if @RightValue == ThingToReplace then 
-                {NodeElem setRight(TreeToInsert)} 
-            else 
+            if @RightValue == ThingToReplace then
+                {NodeElem setRight(TreeToInsert)}
+            else
                 {ReplaceReferencesInTreeHelper @RightNode ThingToReplace TreeToInsert}
             end
         elseif @LeftNode \= nil andthen @RightNode \= nil then
             {ReplaceReferencesInTreeHelper @LeftNode ThingToReplace TreeToInsert}
             {ReplaceReferencesInTreeHelper @RightNode ThingToReplace TreeToInsert}
-        else 
-            {Show ' '}
         end
     end
 end
@@ -391,14 +400,14 @@ end
 
 % Update tree reference list with actual call values
 fun {SetReferencesOnTreeForCall TreeReferences FunctionCallParameters}
-    % TreeReferences = [REFOBJECT(varname: "x", value: nil), REFOBJECT(varname: "y", value: nil)] 
+    % TreeReferences = [REFOBJECT(varname: "x", value: nil), REFOBJECT(varname: "y", value: nil)]
     % FunctionCallParameters = [item(name: "x" value: 4), item(name: "y" value: 5)] -> but a dictionary
-    % Expected output: [REFOBJECT(varname: "x", value: 4), REFOBJECT(varname: "y", value: 5)] 
-    case TreeReferences of H|T then 
-        case H of nil then 
-            TreeReferences 
-        else 
-            local VarName VarNameAtom VarValue in 
+    % Expected output: [REFOBJECT(varname: "x", value: 4), REFOBJECT(varname: "y", value: 5)]
+    case TreeReferences of H|T then
+        case H of nil then
+            TreeReferences
+        else
+            local VarName VarNameAtom VarValue in
                 VarName = {NewCell 0}
                 {H getVarName(VarName)}
                 VarNameAtom = {StringToAtom @VarName}
@@ -407,21 +416,21 @@ fun {SetReferencesOnTreeForCall TreeReferences FunctionCallParameters}
                 {SetReferencesOnTreeForCall T FunctionCallParameters}
             end
         end
-    else 
+    else
         TreeReferences
     end
-end 
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% HELPERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% HELPERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% The following two functions turn an array of records into a dictionary. 
-% NOTE: keys are atoms, proper conversion is needed 
-fun {ListToDictHelper ListOfRecords Dict} 
-    case ListOfRecords of H|T then 
+% The following two functions turn an array of records into a dictionary.
+% NOTE: keys are atoms, proper conversion is needed
+fun {ListToDictHelper ListOfRecords Dict}
+    case ListOfRecords of H|T then
         case H of nil then Dict
-        else 
+        else
             {Dictionary.put Dict {StringToAtom H.name} H.value}
             {ListToDictHelper T Dict }
         end
@@ -430,7 +439,7 @@ fun {ListToDictHelper ListOfRecords Dict}
 end
 
 fun {ListToDict ListOfRecords}
-    local Dict in 
+    local Dict in
         {Dictionary.new Dict}
         {ListToDictHelper ListOfRecords Dict}
     end
@@ -459,7 +468,7 @@ proc {PrintTree Tree}
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TREE EVAULATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TREE EVAULATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 fun {EvalTree NodeElem}
@@ -505,28 +514,28 @@ fun {EvalOp LeftValue RightValue Op}
 end
 
 fun {ApplyFunction FunctionList FuncDefTree RefList}
-    {Show 'Applying Function....'#FunctionList}
-    local FunctionParamCall FunctionParamCallDict Ret Ans in
-        FunctionParamCall = {RecursiveParsingWithParentheses FunctionList RefList} 
+    % {Show 'Applying Function....'#FunctionList}
+    local FunctionParamCall FunctionParamCallDict Ans in
+        FunctionParamCall = {RecursiveParsingWithParentheses FunctionList RefList}
 
-        {Show 'ParamsAssignment'#FunctionParamCall}
+        % {Show 'ParamsAssignment'#FunctionParamCall}
         FunctionParamCallDict = {ListToDict FunctionParamCall}
-        Ret = {SetReferencesOnTreeForCall FuncDefTree.3 FunctionParamCallDict}
-        {Show 'TreeWithReferences'#Ret}
+        _ = {SetReferencesOnTreeForCall FuncDefTree.3 FunctionParamCallDict}
+        % {Show 'TreeWithReferences'#Ret}
         Ans = {EvalTree FuncDefTree.1}
         Ans.1
     end
 end
 
 fun {EvalFunctionCall CallList CurrentList FuncDefTree RefList}
-    {Show CallList#CurrentList} 
+    % {Show CallList#CurrentList}
     case CallList of H|T then
         if {String.is H} then
             {EvalFunctionCall T {Append CurrentList (H | nil)} FuncDefTree RefList}
         else
-            local Res in 
+            local Res in
                 Res = {EvalFunctionCall H nil FuncDefTree RefList}
-                {Show Res}
+                % {Show Res}
                 {EvalFunctionCall T {Append CurrentList (Res | nil)} FuncDefTree RefList}
             end
         end
@@ -534,50 +543,37 @@ fun {EvalFunctionCall CallList CurrentList FuncDefTree RefList}
     end
 end
 
-% fun {EvalFunctionCall ParsedFunCall FuncTree Result}
-    % We have to build a tree based on the function call parsing
-    % Then we have to replace every instance of the call in the tree with FuncDefTree -> We can reuse the ReplaceReferencesInTree function
-    % That way, we have a single tree with references that we can evaluate 
-
-    % la forma de esteban tambien podria servir solo que es un camello con los references
-% end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MAIN CALLER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MAIN CALLER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
+
 fun {Run ProgramStr}
-    local ProgramLi FunDefiniton FunCall Name FuncDefTree RefList FunctionParamCall FunctionParamCallDict Ret Ans ParsedFunCall in
+    local ProgramLi FunDefiniton FunCall Name FuncDefTree RefList ParsedFunCall in
         ProgramLi = {Str2Lst ProgramStr}
 
         FunDefiniton = {GetFunDef ProgramLi}
         FuncDefTree = {ParseFunctionBody {FindFunctionBody FunDefiniton}}
-        {PrintTree FuncDefTree.1}
+        % {PrintTree FuncDefTree.1}
 
         FunCall = {GetFunCall ProgramLi}
         ParsedFunCall = {ParseFunctionCall FunCall}
 
-        Name = {ParseFunctionName {FindFunctionName FunDefiniton}}  
+        Name = {ParseFunctionName {FindFunctionName FunDefiniton}}
         RefList = {Nth Name 2}
 
         {EvalFunctionCall ParsedFunCall nil FuncDefTree RefList}
     end
 end
 
-% {Browse {Run "fun fourtimes x z = var y = x * z in y + y \n fourtimes 4 3"}} % :)
-% {Browse {Run "fun sum x y z = ( x + y ) * z \n sum 4 5 6"}} % :)
-% {Browse {Run "fun sqr x = x * x \n sqr ( sqr ( sqr 2 ) )"}} % :)
-% {Browse {Run "fun sum_n x y z n = ( x + y + z ) * n \n sum_n 1 ( sum_n 1 1 1 2 ) 3 2"}} 
+{Browse '---------------------- Examples provided in class ----------------------'}
 
-% {Browse {Run "fun square x = x * x \n square 3"}}
-% {Browse {Run "fun square x = x * x \n square ( square 3 )"}}
-
-% {Browse {Run "fun arithmetic x y = ( ( x + y ) / ( x - y ) ) * 2 \n arithmetic ( arithmetic 5 6 ) ( arithmetic 2 11 )"}}
-
-
-
+{Browse {Run "fun fourtimes x z = var y = x * z in y + y \n fourtimes 4 3"}} % :)
+{Browse {Run "fun sum x y z = ( x + y ) * z \n sum 4 5 6"}} % :)
+{Browse {Run "fun sqr x = x * x \n sqr ( sqr ( sqr 2 ) )"}} % :)
+{Browse {Run "fun sum_n x y z n = ( x + y + z ) * n \n sum_n 1 ( sum_n 1 1 1 2 ) 3 2"}}
+{Browse {Run "fun square x = x * x \n square 3"}}
+{Browse {Run "fun square x = x * x \n square ( square 3 )"}}
+{Browse {Run "fun arithmetic x y = ( ( x + y ) / ( x - y ) ) * 2 \n arithmetic ( arithmetic 5 6 ) ( arithmetic 2 11 )"}}
 {Browse {Run "fun sqr x = ( x + 1 ) * ( x - 1 ) \n sqr 4"}}
-
-% {Browse {Run "fun fourtimes x = var y = x + x in y + y \n fourtimes ( fourtimes 16 )"}}
-
+{Browse {Run "fun fourtimes x = var y = x + x in y + y \n fourtimes ( fourtimes 16 )"}}
