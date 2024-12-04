@@ -23,11 +23,11 @@ fun sqr x = ( x + 1 ) * ( x - 1 ) \n sqr 4
 ```
 
 ```txt
-fun	sqr	x =	( x + 1 ) *	( x - 1 ) \n sqr 4
+fun sqr x = ( x + 1 ) * ( x - 1 ) \n sqr 4
 ```
 
 ```txt
-fun	twice x	= x	+ x \n twice 5
+fun twice x = x + x \n twice 5
 ```
 
 ```txt
