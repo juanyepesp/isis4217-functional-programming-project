@@ -1,7 +1,7 @@
 # Test Cases
 
 ```txt
-fun	sqr	x =	( x + 1 ) *	( x - 1 ) \n sqr 4
+fun sqr x = ( x + 1 ) * ( x - 1 ) \n sqr 4
 ```
 
 ```txt
@@ -29,5 +29,5 @@ fun arithmetic x y = ( ( x + y ) / ( x - y ) ) * 2 \n arithmetic ( arithmetic 5 
 ```
 
 ```txt
-fun fourtimes x = var y = x + x in y + y fourtimes ( fourtimes 16 )
+fun fourtimes x = var y = x + x in y + y \n fourtimes ( fourtimes 16 )
 ```

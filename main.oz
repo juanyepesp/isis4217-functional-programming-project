@@ -231,35 +231,35 @@ fun {ParseFunctionCallHelper Li Stack CurrentList}
     % {Show Stack#CurrentList}
     case Li 
     of H | T then 
-        {Show '-------------------------'}
-        {Show 'This is H:'#H}
-        {Show 'And this is T:'#T}
-        {Show 'And this is Stack:'#Stack}
-        {Show 'And this is CurrentLi:'#CurrentList}
+        % {Show '-------------------------'}
+        % {Show 'This is H:'#H}
+        % {Show 'And this is T:'#T}
+        % {Show 'And this is Stack:'#Stack}
+        % {Show 'And this is CurrentLi:'#CurrentList}
         case H 
         of "(" then 
             {ParseFunctionCallHelper T CurrentList | Stack nil}
         [] ")" then 
             local Rest ParentList AppRest in
                 ParentList = {Nth {List.take Stack 1} 1} % pops first element
-                {Show 'popTop'#ParentList}
+                % {Show 'popTop'#ParentList}
                 Rest = {List.drop Stack 1} % rest of stack
-                {Show 'restStack'#Rest}
+                % {Show 'restStack'#Rest}
                 AppRest = {Append ParentList (CurrentList | nil)}
-                {Show 'appRest'#AppRest}
+                % {Show 'appRest'#AppRest}
                 {ParseFunctionCallHelper T Rest AppRest }
             end 
         [] _ then 
     
             local NewCurrent in 
-                {Show 'CurrentList'#CurrentList}
+                % {Show 'CurrentList'#CurrentList}
 
                 if CurrentList == nil then 
                     NewCurrent = [H]
                 else 
                     NewCurrent = {Append CurrentList [H]}
                 end
-                {Show 'NewCurrent'#NewCurrent}
+                % {Show 'NewCurrent'#NewCurrent}
                 {ParseFunctionCallHelper T Stack NewCurrent}
             end
         end
@@ -504,13 +504,43 @@ fun {EvalOp LeftValue RightValue Op}
     end
 end
 
-fun {EvalFunctionCall ParsedFunCall FuncTree Result}
+fun {ApplyFunction FunctionList FuncDefTree RefList}
+    {Show 'Applying Function....'#FunctionList}
+    local FunctionParamCall FunctionParamCallDict Ret Ans in
+        FunctionParamCall = {RecursiveParsingWithParentheses FunctionList RefList} 
+
+        {Show 'ParamsAssignment'#FunctionParamCall}
+        FunctionParamCallDict = {ListToDict FunctionParamCall}
+        Ret = {SetReferencesOnTreeForCall FuncDefTree.3 FunctionParamCallDict}
+        {Show 'TreeWithReferences'#Ret}
+        Ans = {EvalTree FuncDefTree.1}
+        Ans.1
+    end
+end
+
+fun {EvalFunctionCall CallList CurrentList FuncDefTree RefList}
+    {Show CallList#CurrentList} 
+    case CallList of H|T then
+        if {String.is H} then
+            {EvalFunctionCall T {Append CurrentList (H | nil)} FuncDefTree RefList}
+        else
+            local Res in 
+                Res = {EvalFunctionCall H nil FuncDefTree RefList}
+                {Show Res}
+                {EvalFunctionCall T {Append CurrentList (Res | nil)} FuncDefTree RefList}
+            end
+        end
+    [] nil then {ApplyFunction CurrentList FuncDefTree RefList}
+    end
+end
+
+% fun {EvalFunctionCall ParsedFunCall FuncTree Result}
     % We have to build a tree based on the function call parsing
     % Then we have to replace every instance of the call in the tree with FuncDefTree -> We can reuse the ReplaceReferencesInTree function
     % That way, we have a single tree with references that we can evaluate 
 
     % la forma de esteban tambien podria servir solo que es un camello con los references
-end
+% end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -523,24 +553,31 @@ fun {Run ProgramStr}
 
         FunDefiniton = {GetFunDef ProgramLi}
         FuncDefTree = {ParseFunctionBody {FindFunctionBody FunDefiniton}}
+        {PrintTree FuncDefTree.1}
 
         FunCall = {GetFunCall ProgramLi}
         ParsedFunCall = {ParseFunctionCall FunCall}
 
         Name = {ParseFunctionName {FindFunctionName FunDefiniton}}  
         RefList = {Nth Name 2}
-        FunctionParamCall = {RecursiveParsingWithParentheses FunCall RefList} 
-        FunctionParamCallDict = {ListToDict FunctionParamCall}
-        Ret = {SetReferencesOnTreeForCall FuncDefTree.3 FunctionParamCallDict}
-        
 
-        % Evaluate
-        Ans = {EvalFunctionCall ParsedFunCall FuncDefTree.1}
-        % Ans = {EvalTree FuncDefTree.1}
-        % Ans.1
+        {EvalFunctionCall ParsedFunCall nil FuncDefTree RefList}
     end
 end
 
-% {Browse {Run "fun fourtimes x z = var y = x * z in y + y \n fourtimes 4 3"}}
-% {Browse {Run "fun sum x y z = ( x + y ) * z \n sum 4 5 6"}}
-{Browse {Run "fun sqr x = x * x \n sqr ( sqr ( sqr 2 ) )"}}
+% {Browse {Run "fun fourtimes x z = var y = x * z in y + y \n fourtimes 4 3"}} % :)
+% {Browse {Run "fun sum x y z = ( x + y ) * z \n sum 4 5 6"}} % :)
+% {Browse {Run "fun sqr x = x * x \n sqr ( sqr ( sqr 2 ) )"}} % :)
+% {Browse {Run "fun sum_n x y z n = ( x + y + z ) * n \n sum_n 1 ( sum_n 1 1 1 2 ) 3 2"}} 
+
+% {Browse {Run "fun square x = x * x \n square 3"}}
+% {Browse {Run "fun square x = x * x \n square ( square 3 )"}}
+
+% {Browse {Run "fun arithmetic x y = ( ( x + y ) / ( x - y ) ) * 2 \n arithmetic ( arithmetic 5 6 ) ( arithmetic 2 11 )"}}
+
+
+
+{Browse {Run "fun sqr x = ( x + 1 ) * ( x - 1 ) \n sqr 4"}}
+
+% {Browse {Run "fun fourtimes x = var y = x + x in y + y \n fourtimes ( fourtimes 16 )"}}
+
